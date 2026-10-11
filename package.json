@@ -1,0 +1,20 @@
+{
+  "name": "aegisgate",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "dev": "npm run dev -w @aegisgate/gateway",
+    "build": "npm run build -w @aegisgate/gateway",
+    "typecheck": "npm run typecheck -w @aegisgate/gateway"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "private": true,
+  "workspaces": [
+    "apps/gateway"
+  ]
+}
