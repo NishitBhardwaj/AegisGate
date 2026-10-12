@@ -6,8 +6,9 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npm run dev -w @aegisgate/gateway",
-    "build": "npm run build -w @aegisgate/gateway",
-    "typecheck": "npm run typecheck -w @aegisgate/gateway"
+    "build": "npm run build --workspaces",
+    "typecheck": "npm run typecheck --workspaces",
+    "dev:catalog": "npm run dev -w @aegisgate/catalog-service"
   },
   "keywords": [],
   "author": "",
@@ -15,6 +16,7 @@
   "type": "commonjs",
   "private": true,
   "workspaces": [
-    "apps/gateway"
+    "apps/gateway",
+    "apps/catalog-service"
   ]
 }
