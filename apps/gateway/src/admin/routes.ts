@@ -29,6 +29,49 @@ const paginationSchema = z.object({
     .min(0).default(0)
 }).strict();
 
+const auditHistorySchema = z.object({
+  limit: z.coerce.number()
+    .int()
+    .min(1)
+    .max(100)
+    .default(25),
+
+  cursor: z.string()
+    .regex(/^[1-9][0-9]{0,18}$/)
+    .refine(
+      value => {
+        try {
+          return BigInt(value) <= 9223372036854775807n;
+        } catch {
+          return false;
+        }
+      },
+      'Invalid audit cursor'
+    )
+    .optional(),
+
+  action: z.string()
+    .trim()
+    .min(1)
+    .max(100)
+    .optional(),
+
+  resourceType: z.string()
+    .trim()
+    .min(1)
+    .max(80)
+    .optional()
+}).strict();
+
+interface AuditLogRow {
+  id: string;
+  actor: string;
+  action: string;
+  resource_type: string;
+  details: Record<string, unknown>;
+  created_at: Date;
+}
+
 interface ClientRow {
   id: string;
   name: string;
@@ -114,6 +157,64 @@ export async function adminManagementRoutes(
       error: 'INTERNAL_ERROR',
       message: 'Unable to complete admin operation'
     });
+  });
+
+  // GET /admin/v1/audit-logs
+  app.get('/audit-logs', async (request) => {
+    // Defense-in-depth: confirm admin identity.
+    adminActor(request);
+
+    const {
+      limit,
+      cursor,
+      action,
+      resourceType
+    } = auditHistorySchema.parse(request.query);
+
+    const result = await dbPool.query<AuditLogRow>(
+      `SELECT
+         id::text AS id,
+         actor,
+         action,
+         resource_type,
+         details,
+         created_at
+       FROM audit_logs
+       WHERE
+         ($1::bigint IS NULL OR id < $1::bigint)
+         AND ($2::text IS NULL OR action = $2::text)
+         AND (
+           $3::text IS NULL OR
+           resource_type = $3::text
+         )
+       ORDER BY id DESC
+       LIMIT $4`,
+      [
+        cursor ?? null,
+        action ?? null,
+        resourceType ?? null,
+        limit + 1
+      ]
+    );
+
+    // Requesting one additional record lets us
+    // determine whether another page exists.
+    const hasMore = result.rows.length > limit;
+    const items = result.rows.slice(0, limit);
+
+    const nextCursor =
+      hasMore && items.length > 0
+        ? items[items.length - 1].id
+        : null;
+
+    return {
+      items,
+      page: {
+        limit,
+        hasMore,
+        nextCursor
+      }
+    };
   });
 
   // GET /admin/v1/clients

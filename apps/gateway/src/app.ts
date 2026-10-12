@@ -32,6 +32,44 @@ export function buildApp(options: AppOptions = {}) {
   app.decorateRequest('adminIdentity', null);
   app.addHook('onRequest', createAdminAuth());
 
+  app.addHook('onSend', async (
+    request,
+    reply,
+    payload
+  ) => {
+    const pathname = request.url.split('?')[0];
+
+    const isAdminRoute =
+      pathname === '/admin/v1' ||
+      pathname.startsWith('/admin/v1/');
+
+    if (isAdminRoute) {
+      reply.header(
+        'Cache-Control',
+        'no-store, private'
+      );
+
+      reply.header('Pragma', 'no-cache');
+
+      reply.header(
+        'X-Content-Type-Options',
+        'nosniff'
+      );
+
+      reply.header(
+        'Referrer-Policy',
+        'no-referrer'
+      );
+
+      reply.header(
+        'Vary',
+        'Authorization'
+      );
+    }
+
+    return payload;
+  });
+
   app.get('/admin/v1/whoami', async (request) => {
     return {
       authenticated: true,
