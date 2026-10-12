@@ -4,6 +4,7 @@ import { dbPool } from './db/pool.js';
 import { env } from './config/env.js';
 import { createApiKeyAuth, type ApiKeyLookup } from './security/apiKeyAuth.js';
 import { createAdminAuth } from './security/adminAuth.js';
+import { adminManagementRoutes } from './admin/routes.js';
 
 interface AppOptions {
   keyLookup?: ApiKeyLookup;
@@ -37,6 +38,10 @@ export function buildApp(options: AppOptions = {}) {
       subject: request.adminIdentity!.subject,
       role: request.adminIdentity!.role
     };
+  });
+
+  app.register(adminManagementRoutes, {
+    prefix: '/admin/v1'
   });
 
   app.get('/health/live', async () => ({
