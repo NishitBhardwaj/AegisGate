@@ -1,0 +1,143 @@
+name: AegisGate Security CI
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: security-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  security-tests:
+    name: Gateway Security and Integration Tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      CI_POSTGRES_ADMIN_PASSWORD: ci-ephemeral-bootstrap-only
+      PGHOST: 127.0.0.1
+      PGPORT: "55432"
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: ci-ephemeral-bootstrap-only
+          POSTGRES_DB: postgres
+        ports:
+          - 55432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          package-manager-cache: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+
+      - name: Install Node.js dependencies
+        run: npm ci
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r apps/orders-service/requirements.txt
+
+      - name: Ensure PostgreSQL client is installed
+        run: |
+          if ! command -v psql >/dev/null 2>&1; then
+            sudo apt-get update -qq
+            sudo apt-get install -y postgresql-client
+          fi
+
+      - name: Generate ephemeral CI credentials
+        shell: bash
+        run: |
+          set -euo pipefail
+          test_password="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))")"
+          jwt_secret="$(node -e "process.stdout.write(require('node:crypto').randomBytes(32).toString('base64url'))")"
+          database_url="postgresql://aegisgate_test_runtime:${test_password}@127.0.0.1:55432/aegisgate_test"
+
+          echo "::add-mask::$test_password"
+          echo "::add-mask::$jwt_secret"
+          echo "::add-mask::$database_url"
+
+          {
+            printf 'CI_TEST_DB_PASSWORD=%s\n' "$test_password"
+            printf 'ADMIN_JWT_SECRET=%s\n' "$jwt_secret"
+            printf 'DATABASE_URL=%s\n' "$database_url"
+            echo 'AEGIS_ALLOW_TEST_DB=1'
+            echo 'AEGIS_ALLOW_DB_CONCURRENCY_TESTS=1'
+          } >> "$GITHUB_ENV"
+
+          echo "Ephemeral CI configuration prepared."
+
+      - name: Provision isolated PostgreSQL database
+        shell: bash
+        run: bash scripts/setup-ci-test-db.sh
+
+      - name: TypeScript typecheck
+        run: npm run typecheck
+
+      - name: Build gateway and catalog workspaces
+        run: npm run build
+
+      - name: API-key cryptography tests
+        run: npm run test:keys -w @aegisgate/gateway
+
+      - name: API-key authentication tests
+        run: npm run test:auth -w @aegisgate/gateway
+
+      - name: Administrator JWT tests
+        run: npm run test:admin -w @aegisgate/gateway
+
+      - name: Authorization boundary tests
+        run: npm run test:boundary -w @aegisgate/gateway
+
+      - name: Isolated audit and rollback tests
+        run: npm run test:audit -w @aegisgate/gateway
+
+      - name: Isolated admin concurrency tests
+        run: npm run test:concurrency -w @aegisgate/gateway
+
+      - name: Python Orders Service tests
+        working-directory: apps/orders-service
+        run: python -m pytest -q
+
+      - name: Production dependency security audit
+        run: npm audit --omit=dev
+
+      - name: CI summary
+        if: success()
+        run: |
+          echo "## AegisGate Security CI" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Gateway security tests: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Isolated PostgreSQL integration tests: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Python Orders Service tests: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- TypeScript typecheck and build: passed" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Production dependency audit: passed" >> "$GITHUB_STEP_SUMMARY"
