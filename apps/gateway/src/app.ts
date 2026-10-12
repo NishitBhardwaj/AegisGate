@@ -3,6 +3,7 @@ import httpProxy from '@fastify/http-proxy';
 import { dbPool } from './db/pool.js';
 import { env } from './config/env.js';
 import { createApiKeyAuth, type ApiKeyLookup } from './security/apiKeyAuth.js';
+import { createAdminAuth } from './security/adminAuth.js';
 
 interface AppOptions {
   keyLookup?: ApiKeyLookup;
@@ -26,6 +27,17 @@ export function buildApp(options: AppOptions = {}) {
     'onRequest',
     createApiKeyAuth(options.keyLookup)
   );
+
+  app.decorateRequest('adminIdentity', null);
+  app.addHook('onRequest', createAdminAuth());
+
+  app.get('/admin/v1/whoami', async (request) => {
+    return {
+      authenticated: true,
+      subject: request.adminIdentity!.subject,
+      role: request.adminIdentity!.role
+    };
+  });
 
   app.get('/health/live', async () => ({
     status: 'ok',

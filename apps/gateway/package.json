@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "keys": "tsx src/cli/manageKeys.ts",
     "test:keys": "tsx --test tests/apiKeys.test.ts",
-    "test:auth": "tsx --test tests/apiKeyAuth.test.ts"
+    "test:auth": "tsx --test tests/apiKeyAuth.test.ts",
+    "test:admin": "tsx --test tests/adminAuth.test.ts"
   },
   "keywords": [],
   "author": "",
@@ -21,6 +22,7 @@
     "@fastify/http-proxy": "^11.6.4",
     "dotenv": "^18.0.7",
     "fastify": "^5.12.5",
+    "jose": "^6.2.12",
     "pg": "^8.23.1",
     "zod": "^4.6.6"
   },

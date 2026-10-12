@@ -53,9 +53,9 @@ export function createApiKeyAuth(
     reply: FastifyReply
   ) {
     const pathname = request.url.split('?')[0];
-    const protectedRoute = /^\/api\/(?:catalog|orders)(?:\/|$)/.test(
-      pathname
-    );
+    const protectedRoute =
+      pathname === '/api' ||
+      pathname.startsWith('/api/');
 
     if (!protectedRoute) {
       return;

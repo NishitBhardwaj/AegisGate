@@ -30,7 +30,18 @@ const envSchema = z.object({
       value.startsWith('postgresql://') ||
       value.startsWith('postgres://'),
     { message: 'Expected a PostgreSQL connection URL' }
-  )
+  ),
+
+  ADMIN_JWT_SECRET: z.string()
+    .regex(
+      /^[A-Za-z0-9_-]{43}$/,
+      'Expected a 256-bit base64url secret'
+    )
+    .refine(
+      (value) =>
+        Buffer.from(value, 'base64url').length === 32,
+      'Admin signing secret must contain 32 bytes'
+    )
 });
 
 const parsed = envSchema.safeParse(process.env);
