@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import httpProxy from '@fastify/http-proxy';
+import { dbPool } from './db/pool.js';
+import { env } from './config/env.js';
 
 export function buildApp() {
   const app = Fastify({
@@ -11,13 +13,31 @@ export function buildApp() {
     service: 'aegisgate'
   }));
 
-  const catalogUpstream =
-    process.env.CATALOG_UPSTREAM ??
-    'http://127.0.0.1:3001';
+  app.get('/health/ready', async (_request, reply) => {
+    try {
+      await dbPool.query('SELECT 1');
 
-  const ordersUpstream =
-    process.env.ORDERS_UPSTREAM ??
-    'http://127.0.0.1:8000';
+      return {
+        status: 'ready',
+        service: 'aegisgate',
+        database: 'up'
+      };
+    } catch (error) {
+      app.log.error(
+        { err: error },
+        'PostgreSQL readiness check failed'
+      );
+
+      return reply.code(503).send({
+        status: 'not_ready',
+        service: 'aegisgate',
+        database: 'down'
+      });
+    }
+  });
+
+  const catalogUpstream = env.CATALOG_UPSTREAM;
+  const ordersUpstream = env.ORDERS_UPSTREAM;
 
   const timeoutMs = 1500;
 

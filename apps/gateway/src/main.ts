@@ -1,12 +1,9 @@
 import { buildApp } from './app.js';
+import { env } from './config/env.js';
 
 const app = buildApp();
-const port = Number(process.env.PORT ?? 8080);
-const host = process.env.HOST ?? '127.0.0.1';
-
-if (!Number.isInteger(port) || port < 1 || port > 65535) {
-  throw new Error('Invalid PORT configuration');
-}
+const port = env.PORT;
+const host = env.HOST;
 
 try {
   await app.listen({ port, host });
