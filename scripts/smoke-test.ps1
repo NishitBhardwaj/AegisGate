@@ -1,9 +1,17 @@
 $ErrorActionPreference = "Stop"
 
+if (-not $env:AEGIS_API_KEY) {
+    throw "AEGIS_API_KEY must be configured before testing."
+}
+
+$authHeaders = @{
+    "X-API-Key" = $env:AEGIS_API_KEY
+}
+
 $direct = Invoke-RestMethod "http://127.0.0.1:3001/products"
-$proxied = Invoke-RestMethod "http://127.0.0.1:8080/api/catalog/products"
-$filtered = Invoke-RestMethod "http://127.0.0.1:8080/api/catalog/products?category=books"
-$product = Invoke-RestMethod "http://127.0.0.1:8080/api/catalog/products/1"
+$proxied = Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/catalog/products" -Headers $authHeaders
+$filtered = Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/catalog/products?category=books" -Headers $authHeaders
+$product = Invoke-RestMethod -Uri "http://127.0.0.1:8080/api/catalog/products/1" -Headers $authHeaders
 $health = Invoke-RestMethod "http://127.0.0.1:8080/health/live"
 
 if ($direct.count -ne 3) {

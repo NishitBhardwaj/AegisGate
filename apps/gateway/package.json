@@ -10,7 +10,8 @@
     "start": "node dist/main.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "keys": "tsx src/cli/manageKeys.ts",
-    "test:keys": "tsx --test tests/apiKeys.test.ts"
+    "test:keys": "tsx --test tests/apiKeys.test.ts",
+    "test:auth": "tsx --test tests/apiKeyAuth.test.ts"
   },
   "keywords": [],
   "author": "",

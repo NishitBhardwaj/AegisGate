@@ -2,11 +2,30 @@ import Fastify from 'fastify';
 import httpProxy from '@fastify/http-proxy';
 import { dbPool } from './db/pool.js';
 import { env } from './config/env.js';
+import { createApiKeyAuth, type ApiKeyLookup } from './security/apiKeyAuth.js';
 
-export function buildApp() {
+interface AppOptions {
+  keyLookup?: ApiKeyLookup;
+  catalogUpstream?: string;
+  ordersUpstream?: string;
+}
+
+export function buildApp(options: AppOptions = {}) {
   const app = Fastify({
-    logger: true
+    logger: {
+      redact: [
+        'req.headers.x-api-key',
+        'req.headers.authorization',
+        'req.headers.cookie'
+      ]
+    }
   });
+
+  app.decorateRequest('apiClient', null);
+  app.addHook(
+    'onRequest',
+    createApiKeyAuth(options.keyLookup)
+  );
 
   app.get('/health/live', async () => ({
     status: 'ok',
@@ -36,8 +55,10 @@ export function buildApp() {
     }
   });
 
-  const catalogUpstream = env.CATALOG_UPSTREAM;
-  const ordersUpstream = env.ORDERS_UPSTREAM;
+  const catalogUpstream =
+    options.catalogUpstream ?? env.CATALOG_UPSTREAM;
+  const ordersUpstream =
+    options.ordersUpstream ?? env.ORDERS_UPSTREAM;
 
   const timeoutMs = 1500;
 
@@ -47,10 +68,25 @@ export function buildApp() {
     retryMethods: [] as string[],
     maxRetriesOn503: 0,
 
-    rewriteRequestHeaders(request: any, headers: any) {
-      const cleanHeaders = { ...headers };
-      delete cleanHeaders.expect;
-      return cleanHeaders;
+    rewriteRequestHeaders: (_request: any, headers: any) => {
+      const sanitized = { ...headers };
+      delete sanitized.expect;
+      const blocked = new Set([
+        'x-api-key',
+        'authorization',
+        'proxy-authorization',
+        'cookie'
+      ]);
+      for (const name of Object.keys(sanitized)) {
+        const normalizedName = name.toLowerCase();
+        if (
+          blocked.has(normalizedName) ||
+          normalizedName.startsWith('x-aegis-')
+        ) {
+          delete sanitized[name];
+        }
+      }
+      return sanitized;
     },
 
     onError(

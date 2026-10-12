@@ -1,5 +1,13 @@
 $ErrorActionPreference = "Stop"
 
+if (-not $env:AEGIS_API_KEY) {
+    throw "AEGIS_API_KEY must be configured before testing."
+}
+
+$authHeaders = @{
+    "X-API-Key" = $env:AEGIS_API_KEY
+}
+
 Write-Host "--- Test 4: Create order through gateway ---"
 $body = @{
     product_id = "1"
@@ -9,13 +17,16 @@ $body = @{
 $order = Invoke-RestMethod `
     -Uri "http://127.0.0.1:8080/api/orders/orders" `
     -Method Post `
+    -Headers $authHeaders `
     -ContentType "application/json" `
     -Body $body
 
 Write-Output ($order | ConvertTo-Json)
 
 Write-Host "`n--- Test 5: Retrieve the created order ---"
-$retrieved = Invoke-RestMethod "http://127.0.0.1:8080/api/orders/orders/$($order.id)"
+$retrieved = Invoke-RestMethod `
+    -Uri "http://127.0.0.1:8080/api/orders/orders/$($order.id)" `
+    -Headers $authHeaders
 Write-Output ($retrieved | ConvertTo-Json)
 
 Write-Host "`n--- Test 6: Input validation on invalid order ---"
@@ -28,6 +39,7 @@ try {
     Invoke-WebRequest `
       -Uri "http://127.0.0.1:8080/api/orders/orders" `
       -Method Post `
+      -Headers $authHeaders `
       -ContentType "application/json" `
       -Body $invalidBody `
       -ErrorAction Stop
