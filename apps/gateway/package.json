@@ -14,7 +14,8 @@
     "test:auth": "tsx --test tests/apiKeyAuth.test.ts",
     "test:admin": "tsx --test tests/adminAuth.test.ts",
     "test:audit": "tsx --test tests/auditHistory.integration.test.ts",
-    "test:boundary": "tsx --test tests/securityBoundary.test.ts"
+    "test:boundary": "tsx --test tests/securityBoundary.test.ts",
+    "test:concurrency": "tsx --test tests/adminConcurrency.integration.test.ts"
   },
   "keywords": [],
   "author": "",
