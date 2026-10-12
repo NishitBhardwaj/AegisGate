@@ -13,6 +13,9 @@ import {
   ADMIN_JWT_SUBJECT,
   getAdminJwtKey
 } from '../src/security/adminJwt.js';
+import {
+  assertIsolatedTestDatabase
+} from './helpers/assertTestDb.js';
 
 test(
   'AegisGate admin concurrency and transaction safety',
@@ -28,25 +31,7 @@ test(
       );
     }
 
-    // Verify that testing uses the restricted runtime role.
-    const identity = await dbPool.query<{
-      runtime_user: string;
-      db_name: string;
-    }>(
-      `SELECT
-         current_user AS runtime_user,
-         current_database() AS db_name`
-    );
-
-    assert.equal(
-      identity.rows[0].runtime_user,
-      'aegisgate_runtime'
-    );
-
-    assert.equal(
-      identity.rows[0].db_name,
-      'aegisgate'
-    );
+    await assertIsolatedTestDatabase();
 
     const app = buildApp();
 

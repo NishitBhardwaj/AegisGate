@@ -14,6 +14,9 @@ import {
   ADMIN_JWT_SUBJECT,
   getAdminJwtKey
 } from '../src/security/adminJwt.js';
+import {
+  assertIsolatedTestDatabase
+} from './helpers/assertTestDb.js';
 
 async function createAdminToken() {
   return new SignJWT({ role: 'admin' })
@@ -32,6 +35,8 @@ async function createAdminToken() {
 test(
   'Audit history and transactional integrity',
   async (t) => {
+    await assertIsolatedTestDatabase();
+
     const app = buildApp();
     const token = await createAdminToken();
 
@@ -43,6 +48,25 @@ test(
       await app.close();
       await dbPool.end();
     });
+
+    // Create three audit records using the real admin API.
+    // This makes pagination tests work in a fresh database.
+    for (let i = 0; i < 3; i++) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/admin/v1/clients',
+        headers,
+        payload: {
+          name: `AuditFixture-${randomUUID().slice(0, 8)}`
+        }
+      });
+
+      assert.equal(
+        response.statusCode,
+        201,
+        'Audit fixture creation failed'
+      );
+    }
 
     await t.test(
       'Unauthenticated history is rejected',
