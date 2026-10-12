@@ -13,7 +13,8 @@
     "test:keys": "tsx --test tests/apiKeys.test.ts",
     "test:auth": "tsx --test tests/apiKeyAuth.test.ts",
     "test:admin": "tsx --test tests/adminAuth.test.ts",
-    "test:audit": "tsx --test tests/auditHistory.integration.test.ts"
+    "test:audit": "tsx --test tests/auditHistory.integration.test.ts",
+    "test:boundary": "tsx --test tests/securityBoundary.test.ts"
   },
   "keywords": [],
   "author": "",
