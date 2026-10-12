@@ -6,3 +6,9 @@ coverage/
 !.env.example
 *.log
 .DS_Store
+
+# Python
+.venv/
+__pycache__/
+*.pyc
+.pytest_cache/
