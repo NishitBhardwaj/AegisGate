@@ -8,7 +8,9 @@
     "dev": "tsx watch src/main.ts",
     "build": "tsc -p tsconfig.json",
     "start": "node dist/main.js",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "keys": "tsx src/cli/manageKeys.ts",
+    "test:keys": "tsx --test tests/apiKeys.test.ts"
   },
   "keywords": [],
   "author": "",
